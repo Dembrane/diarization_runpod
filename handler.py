@@ -96,11 +96,18 @@ def handler(event):
         
         # Run diarization
         diarization, embeddings = pipeline(input_dict, return_embeddings=True)
+
+        labels = diarization.labels()
+
+        embedding_dict = {}
+        if embeddings is not None:
+            for label,embedding in zip(labels,embeddings):
+                embedding_dict[label] = embedding.tolist()
         
         # Prepare the response
         response = {
             "diarization": format_diarization_output(diarization),
-            "embeddings": embeddings.tolist() if embeddings is not None else None
+            "embeddings_dict": embedding_dict
         }
         
         processing_time = time.time() - start_time
