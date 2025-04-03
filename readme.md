@@ -1,6 +1,6 @@
 # PyAnnote Speaker Diarization RunPod Handler
 
-This repository contains a RunPod handler for speaker diarization using PyAnnote. It takes audio input and returns diarization results with speaker segments and optionally speaker embeddings.
+This repository contains a RunPod handler for speaker diarization using PyAnnote. It takes audio input and returns diarization results with speaker segments and speaker embeddings.
 
 ## Setup
 
@@ -37,18 +37,16 @@ Send a POST request to your RunPod endpoint with the following structure:
 ```json
 {
   "input": {
-    "audio": "<base64_encoded_audio>",
-    "sample_rate": 16000,
-    "return_embeddings": true
+    "audio_data": "<base64_encoded_audio>",
+    "file_type": "wav"
   }
 }
 ```
 
 ### Parameters
 
-- `audio`: Required. Base64-encoded audio data in float32 format
-- `sample_rate`: Optional. Sample rate of the audio (default: 16000)
-- `return_embeddings`: Optional. Whether to return speaker embeddings (default: true)
+- `audio_data`: Required. Base64-encoded audio file (wav, mp3, etc.)
+- `file_type`: Optional. File format of the audio (default: "wav")
 
 ### Response
 
@@ -66,7 +64,10 @@ Send a POST request to your RunPod endpoint with the following structure:
       "end": 5.2
     }
   ],
-  "embeddings": [...],  // Only if return_embeddings is true
+  "embeddings_dict": {
+    "SPEAKER_0": [0.1, 0.2, ...],
+    "SPEAKER_1": [0.3, 0.4, ...]
+  },
   "processing_time": 3.45
 }
 ```
@@ -81,4 +82,44 @@ export HF_TOKEN="your_huggingface_token"
 
 # Run the handler locally
 python handler.py
+```
+
+You can then test it with:
+
+```bash
+python test.py
+```
+
+## Example Code
+
+```python
+import requests
+import base64
+import os
+
+# Read and encode audio file
+with open("audio.wav", "rb") as audio_file:
+    audio_base64 = base64.b64encode(audio_file.read()).decode('utf-8')
+
+# Set up headers with RunPod API key
+headers = {
+    'Content-Type': 'application/json',
+    'Authorization': f'Bearer {os.getenv("RUNPOD_API_KEY")}'
+}
+
+# Prepare the request payload
+json_input = {
+    "input": {
+        "audio_data": audio_base64,
+        "file_type": "wav"
+    }
+}
+
+# Send the request to your RunPod endpoint
+response = requests.post('https://api.runpod.ai/v2/your-endpoint-id/runsync', 
+                         headers=headers, 
+                         json=json_input)
+
+# Process the response
+result = response.json()
 ```
