@@ -1,11 +1,11 @@
 import os
 import time
 import torch
-import base64
-import json
-import numpy as np
 import runpod
-from io import BytesIO
+import base64
+import io
+import soundfile as sf
+import numpy as np
 from pyannote.audio import Pipeline
 
 
@@ -36,7 +36,6 @@ def init():
     print(f"Diarization pipeline loaded successfully on {device}")
 
 
-
 def format_diarization_output(diarization):
     """Format diarization results to a serializable format."""
     segments = []
@@ -56,42 +55,52 @@ def handler(event):
     Expected input structure:
     {
         "input": {
-            "audio": "<base64_encoded_audio>",
-            "sample_rate": 16000,  # Optional, defaults to 16000
-            "return_embeddings": true  # Optional, defaults to true
+            "audio_data": "<base64_encoded_audio>",
+            "file_type": "<file_extension>"
         }
     }
     """
     job_input = event["input"]
+    audio_data = job_input.get("audio_data")
+    file_type = job_input.get("file_type", "wav")  # default to wav if not specified
     
-    # Extract input parameters
-    waveform = job_input.get("waveform")
-    sr = job_input.get("sr")
-    
-    if not waveform or not sr:
+    if audio_data is None:
         return {"error": "No audio data provided"}
     
     try:
+        # Decode base64 to audio
+        audio_bytes = base64.b64decode(audio_data)
+        audio_io = io.BytesIO(audio_bytes)
+        
+        # Read audio file using soundfile
+        waveform, sample_rate = sf.read(audio_io)
+        
+        # Convert to float tensor
+        waveform = torch.from_numpy(waveform).float()
+        
+        # Add batch dimension if needed (pyannote expects [channel, time])
+        if len(waveform.shape) == 1:
+            waveform = waveform.unsqueeze(0)
+        elif len(waveform.shape) == 2:
+            # If stereo, convert to mono by averaging channels
+            waveform = waveform.mean(axis=0, keepdim=True)
+        
         # Process audio data
         start_time = time.time()
-        
-        # Decode audio
-        # audio_tensor, sr = decode_audio(encoded_audio, sample_rate)
-        
+
         # Prepare input for pipeline
         input_dict = {
-            'waveform': waveform,  # Add batch dimension
-            'sample_rate': sr
+            'waveform': waveform,
+            'sample_rate': sample_rate
         }
         
         # Run diarization
-        diarization, embeddings = pipeline(input_dict, 
-                                       return_embeddings=True)
+        diarization, embeddings = pipeline(input_dict, return_embeddings=True)
         
         # Prepare the response
         response = {
             "diarization": format_diarization_output(diarization),
-            "embeddings": embeddings.cpu().numpy().tolist() if embeddings is not None else None
+            "embeddings": embeddings.tolist() if embeddings is not None else None
         }
         
         processing_time = time.time() - start_time
@@ -100,7 +109,7 @@ def handler(event):
         return response
     
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"Error processing audio: {str(e)}"}
 
 
 # Initialize the model
