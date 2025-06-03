@@ -5,88 +5,42 @@ from dotenv import load_dotenv
 import torch
 import soundfile as sf
 import base64
-load_dotenv()
+import tempfile
+import logging
+import time
+import pickle
+from utils import *
+import io
 
-## Local Build##
+HF_TOKEN = os.getenv("HF_TOKEN")
+assert HF_TOKEN, "HF_TOKEN is not set"
 
-# pipeline = Pipeline.from_pretrained(
-#     "pyannote/speaker-diarization-3.1",
-#     use_auth_token=os.getenv("HF_TOKEN"),
-#     )
+logger = logging.getLogger(__name__)
+# audio_url = "https://github.com/runpod-workers/sample-inputs/raw/refs/heads/main/audio/Arthur.mp3"
+audio_url ='https://github.com/Dembrane/diarization_runpod/raw/refs/heads/feature/echo-262-runpod-serverless-changes-to-accommodate-this/test.mp3'
 
+input_dict = get_pyannote_input_dict(audio_url, None)
+waveform, sample_rate = input_dict["waveform"], input_dict["sample_rate"]
 
-
-# # send pipeline to GPU (when available)
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# pipeline.to(device)
-
-# #read waveform
-# # sample first 10 seconds
-# waveform, sample_rate = sf.read("audio.wav")
-# waveform = waveform[:sample_rate*20]
-# waveform = torch.from_numpy(waveform).float()
-
-# input_dict = {
-#         'waveform': waveform[None],
-#         'sample_rate': sample_rate
-#     }
-
-# diarization, embeddings = pipeline(input_dict, return_embeddings=True)
-
-# labels = diarization.labels()
-
-# for label,embedding in zip(labels,embeddings):
-#     print({label:embedding.tolist()})
-
-# print('***')
-# #print the result
-# for turn, _, speaker in diarization.itertracks(yield_label=True):
-#     print(f"start={turn.start:.1f}s stop={turn.end:.1f}s speaker_{speaker}")
-
-## /Local Build##
+pipeline = Pipeline.from_pretrained(
+    "pyannote/speaker-diarization-3.1",
+    use_auth_token=HF_TOKEN,
+    )
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+pipeline.to(device)
 
 
+# input_dict = get_pyannote_input_dict(audio_path, None)
 
-# ## Local API Call ##
-# import pandas as pd
-# with open("audio.wav", "rb") as audio_file:
-#     audio_base64 = base64.b64encode(audio_file.read()).decode('utf-8')
-#     # take first 10 seconds
-#     audio_base64 = audio_base64[:10*16000*2]
-# json_input = {
-#     "input": {
-#         "audio_data": audio_base64,
-#         "file_type": "wav"
-#     }
-# }
+diarization, embeddings = pipeline(input_dict, return_embeddings=True)
 
-# response = requests.post("http://localhost:8080/runsync", 
-#                          json=json_input)
-# print(response.json())
+labels = diarization.labels()
 
-# dirz_df = pd.DataFrame(response.json()['output']['diarization'])
-# ## /Local API Call ##
+formatted_diarization = format_diarization_output(diarization)
+joined_diarization = join_diarization_output(formatted_diarization)
+noise_ratio = calculate_amplitude_ratio(waveform, sample_rate, joined_diarization)
+cross_talk_instances = detect_cross_talk(joined_diarization)
+silence_ratio = calculate_silence_ratio(waveform, sample_rate, joined_diarization)
+print(joined_diarization)
 
 
-
-
-with open("audio.wav", "rb") as audio_file:
-    audio_base64 = base64.b64encode(audio_file.read()).decode('utf-8')
-
-headers = {
-    'Content-Type': 'application/json',
-    'Authorization': f'Bearer {os.getenv("RUNPOD_API_KEY")}'
-}
-
-json_input = {
-    "input": {
-        "audio_data": audio_base64,
-        "file_type": "wav"
-    }
-}
-
-response = requests.post('https://api.runpod.ai/v2/rqgkup34l95eph/runsync', 
-                         headers=headers, 
-                         json=json_input)
-
-print(response.json())

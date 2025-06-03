@@ -1,4 +1,3 @@
+__pycache__/*
 .env
-# test.py
 *.wav
-__pycache__/handler.cpython-310.pyc
