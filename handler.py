@@ -62,7 +62,7 @@ def handler(event):
             "noise_ratio": noise_ratio,
             "cross_talk_instances": cross_talk_instances,
             "silence_ratio": silence_ratio,
-            "embeddings": embeddings,
+            # "embeddings": embeddings,
             "joined_diarization": joined_diarization,
         }
     except Exception as e:
