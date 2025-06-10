@@ -2,3 +2,4 @@ pyannote.audio==3.3.2
 runpod==1.7.7
 python-dotenv==1.1.0
 soundfile==0.13.*
+git+https://github.com/huggingface/diarizers.git

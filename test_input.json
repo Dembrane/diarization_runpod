@@ -1,5 +1,6 @@
 {
     "input": {
-      "audio": "https://github.com/Dembrane/diarization_runpod/raw/refs/heads/feature/echo-262-runpod-serverless-changes-to-accommodate-this/test.mp3"
+      "audio": "https://github.com/Dembrane/diarization_runpod/raw/refs/heads/main/test_dutch.mp3",
+      "language": "nl"
     }
   }
