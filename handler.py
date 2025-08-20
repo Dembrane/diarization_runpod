@@ -33,7 +33,7 @@ def init():
     pipeline.to(device)
     logger.info(f"Diarization pipeline loaded successfully on {device}")
 
-    segmentation_model_dict={'nl': SegmentationModel().from_pretrained("Roy2358/speaker-segmentation-fine-tuned-nl").to_pyannote_model()}
+    segmentation_model_dict={'nl': SegmentationModel().from_pretrained("dembrane/speaker-segmentation-fine-tuned-nl").to_pyannote_model()}
 
 
 def handler(event):
